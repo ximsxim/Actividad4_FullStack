@@ -1,0 +1,25 @@
+name: Pruebas Automatizadas Jest
+
+on:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Descargar el código
+      uses: actions/checkout@v3
+
+    - name: Configurar Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+
+    - name: Instalar dependencias
+      run: npm install
+
+    - name: Ejecutar pruebas
+      run: npm test
+      env:
+        JWT_SECRET: secreto_de_prueba

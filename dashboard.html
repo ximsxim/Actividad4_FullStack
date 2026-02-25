@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>MtyCoffeeGuide | Guía</title>
+    <style>
+        :root { --primary: #6F4E37; --bg: #FDFCFB; --accent: #A67B5B; --danger: #d9534f; --warning: #f0ad4e;}
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 2rem; display: flex; flex-direction: column; align-items: center; }
+        h1 { font-weight: 300; color: var(--primary); margin-bottom: 2rem; }
+        
+        .admin-panel { display: none; background: #F0EBE6; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; width: 100%; max-width: 900px; border: 1px solid var(--accent); box-sizing: border-box;}
+        .admin-panel h3 { margin-top: 0; color: var(--primary); font-size: 1.1rem;}
+        .admin-panel input { width: calc(25% - 10px); display: inline-block; margin-right: 5px; margin-bottom: 10px;}
+        .admin-panel button { width: auto; padding: 8px 15px; margin-top: 5px;}
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; width: 100%; max-width: 900px; }
+        .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #F0F0F0; display: flex; flex-direction: column;}
+        .card-img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; background-color: #f8f8f8; }
+        .card h3 { margin: 0; color: var(--primary); font-size: 1.2rem; display: flex; justify-content: space-between;}
+        .card p { color: #666; font-size: 0.9rem; margin: 0.5rem 0; }
+        .tag { display: inline-block; background: #F0EBE6; color: var(--primary); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; align-self: flex-start;}
+        
+        .admin-actions { margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px; display: flex; gap: 5px; }
+        .btn-edit { background-color: var(--warning); }
+        .btn-delete { background-color: var(--danger); }
+
+        .resenas-container { margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; max-height: 130px; overflow-y: auto; font-size: 0.85rem;}
+        .resenas-container::-webkit-scrollbar { width: 5px; }
+        .resenas-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 5px; }
+        .resena-item { background: #fafafa; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #f0f0f0;}
+        .resena-item p { margin: 3px 0 0 0; color: #444; font-style: italic;}
+        .resena-item span { font-weight: bold; color: var(--accent); }
+
+        .review-section { margin-top: 1rem; border-top: 1px solid #EEE; padding-top: 1rem; }
+        select, input, button { padding: 8px; border: 1px solid #EEE; border-radius: 6px; font-family: inherit; font-size: 0.85rem;}
+        button { background-color: var(--primary); color: white; cursor: pointer; border: none; margin-top: 5px; width: 100%; font-weight: bold;}
+        button:hover { opacity: 0.9; }
+        .logout { margin-top: 2rem; color: #888; cursor: pointer; text-decoration: underline; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <h1>MtyCoffeeGuide</h1>
+    
+    <div class="admin-panel" id="adminPanel">
+        <h3> Panel de Administrador: Agregar Nueva Cafetería</h3>
+        <input type="text" id="nuevoNombre" placeholder="Nombre">
+        <input type="text" id="nuevaDireccion" placeholder="Ubicación">
+        <input type="text" id="nuevaEspecialidad" placeholder="Especialidad">
+        <input type="text" id="nuevaImagen" placeholder="URL de la imagen">
+        <button onclick="crearCafeteria()">Guardar Cafetería</button>
+    </div>
+
+    <div class="grid" id="coffeeGrid"></div>
+
+    <div class="logout" onclick="logout()">Cerrar sesión</div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = 'login.html';
+
+        const decodificarToken = (token) => {
+            try { return JSON.parse(atob(token.split('.')[1])); } 
+            catch (e) { return null; }
+        };
+
+        const usuarioActual = decodificarToken(token);
+        const esAdmin = usuarioActual && usuarioActual.rol === 'admin';
+
+        if (esAdmin) {
+            document.getElementById('adminPanel').style.display = 'block';
+        }
+
+        const cargarCafeterias = async () => {
+            const res = await fetch('/api/cafeterias');
+            const cafeterias = await res.json();
+            const grid = document.getElementById('coffeeGrid');
+
+            grid.innerHTML = cafeterias.map(cafe => `
+                <div class="card">
+                    ${cafe.imagen_url ? `<img src="${cafe.imagen_url}" alt="${cafe.nombre}" class="card-img">` : ''}
+                    <h3>${cafe.nombre} <span>⭐ ${cafe.promedio || 'S/N'}</span></h3>
+                    <p>📍 ${cafe.direccion}</p>
+                    <span class="tag">${cafe.especialidad}</span>
+                    
+                    ${esAdmin ? `
+                    <div class="admin-actions">
+                        <button class="btn-edit" onclick="editarCafeteria(${cafe.id}, '${cafe.nombre}', '${cafe.direccion}', '${cafe.especialidad}', '${cafe.imagen_url || ''}')">Editar</button>
+                        <button class="btn-delete" onclick="eliminarCafeteria(${cafe.id})">Eliminar</button>
+                    </div>
+                    ` : ''}
+
+                    <div class="resenas-container">
+                        ${cafe.lista_resenas && cafe.lista_resenas.length > 0 
+                            ? cafe.lista_resenas.map(r => `
+                                <div class="resena-item">
+                                    <span>⭐ ${r.calificacion}</span>
+                                    <p>"${r.comentario}"</p>
+                                </div>
+                            `).join('') 
+                            : '<p style="color: #999; font-style: italic; font-size: 0.8rem;">Sin reseñas aún. ¡Sé el primero en opinar!</p>'
+                        }
+                    </div>
+
+                    <div class="review-section">
+                        <select id="calificacion-${cafe.id}">
+                            <option value="5">5 Estrellas</option>
+                            <option value="4">4 Estrellas</option>
+                            <option value="3">3 Estrellas</option>
+                            <option value="2">2 Estrellas</option>
+                            <option value="1">1 Estrella</option>
+                        </select>
+                        <input type="text" id="comentario-${cafe.id}" placeholder="Escribe una reseña breve..." style="width: 90%; margin-top: 5px;">
+                        <button onclick="enviarResena(${cafe.id})">Calificar</button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        const crearCafeteria = async () => {
+            const nombre = document.getElementById('nuevoNombre').value;
+            const direccion = document.getElementById('nuevaDireccion').value;
+            const especialidad = document.getElementById('nuevaEspecialidad').value;
+            const imagen_url = document.getElementById('nuevaImagen').value;
+
+            const res = await fetch('/api/cafeterias', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ nombre, direccion, especialidad, imagen_url })
+            });
+
+            if (res.ok) {
+                alert('Cafetería agregada con éxito');
+                document.getElementById('nuevoNombre').value = '';
+                document.getElementById('nuevaDireccion').value = '';
+                document.getElementById('nuevaEspecialidad').value = '';
+                document.getElementById('nuevaImagen').value = '';
+                cargarCafeterias();
+            } else alert('Error al agregar cafetería');
+        };
+
+        const editarCafeteria = async (id, nombreActual, direccionActual, especialidadActual, imagenActual) => {
+            const nombre = prompt('Nuevo nombre:', nombreActual) || nombreActual;
+            const direccion = prompt('Nueva dirección:', direccionActual) || direccionActual;
+            const especialidad = prompt('Nueva especialidad:', especialidadActual) || especialidadActual;
+            const imagen_url = prompt('Nueva URL de imagen:', imagenActual) || imagenActual;
+
+            const res = await fetch('/api/cafeterias/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ nombre, direccion, especialidad, imagen_url })
+            });
+
+            if (res.ok) { alert('Actualizada correctamente'); cargarCafeterias(); }
+            else alert('Error al actualizar');
+        };
+
+        const eliminarCafeteria = async (id) => {
+            if (!confirm('¿Estás seguro de que deseas eliminar esta cafetería?')) return;
+            const res = await fetch('/api/cafeterias/' + id, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) { alert('Eliminada correctamente'); cargarCafeterias(); }
+            else alert('Error al eliminar');
+        };
+
+        const enviarResena = async (id) => {
+            const calificacion = document.getElementById(`calificacion-${id}`).value;
+            const comentario = document.getElementById(`comentario-${id}`).value;
+
+            const res = await fetch('/api/cafeterias/resenas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ cafeteria_id: id, calificacion, comentario })
+            });
+
+            if (res.ok) { alert('¡Reseña guardada!'); cargarCafeterias(); } 
+            else alert('Error al guardar la reseña');
+        };
+
+        const logout = () => {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        };
+
+        cargarCafeterias();
+    </script>
+</body>
+</html>

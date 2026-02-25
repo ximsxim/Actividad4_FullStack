@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MtyCoffeeGuide | Acceso</title>
+    <style>
+        :root { --primary: #6F4E37; --bg: #FDFCFB; --text: #2D241E; --accent: #A67B5B; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); 
+               display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); 
+                width: 100%; max-width: 380px; text-align: center; border: 1px solid #F0F0F0; }
+        h2 { font-weight: 300; letter-spacing: -1px; margin-bottom: 2rem; color: var(--primary); }
+        input { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #EEE; border-radius: 8px; 
+                box-sizing: border-box; background: #FAFAFA; transition: 0.3s; font-size: 1rem; }
+        input:focus { outline: none; border-color: var(--accent); background: #FFF; }
+        button { width: 100%; padding: 14px; background-color: var(--primary); color: white; border: none; 
+                 border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; margin-top: 1.5rem; transition: 0.3s; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .toggle-container { margin-top: 1.5rem; font-size: 0.85rem; color: #888; }
+        .toggle-link { color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: none; margin-left: 5px; }
+        #nombre { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2 id="formTitle">MtyCoffeeGuide</h2>
+    
+    <div id="authForm">
+        <input type="text" id="nombre" placeholder="Nombre completo">
+        <input type="email" id="email" placeholder="Correo electrónico">
+        <input type="password" id="password" placeholder="Contraseña">
+        <button onclick="enviarFormulario()" id="btnSubmit">Entrar</button>
+    </div>
+
+    <div class="toggle-container">
+        <span id="toggleQuestion">¿No tienes cuenta?</span>
+        <span class="toggle-link" onclick="cambiarModo()" id="toggleAction">Regístrate</span>
+    </div>
+</div>
+
+<script>
+    let esModoLogin = true;
+
+    function cambiarModo() {
+        esModoLogin = !esModoLogin;
+        document.getElementById('formTitle').innerText = esModoLogin ? 'MtyCoffeeGuide' : 'Crear Cuenta';
+        document.getElementById('btnSubmit').innerText = esModoLogin ? 'Entrar' : 'Registrarme';
+        document.getElementById('toggleQuestion').innerText = esModoLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?';
+        document.getElementById('toggleAction').innerText = esModoLogin ? 'Regístrate' : 'Inicia Sesión';
+        document.getElementById('nombre').style.display = esModoLogin ? 'none' : 'block';
+    }
+
+    async function enviarFormulario() {
+        const nombre = document.getElementById('nombre').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const ruta = esModoLogin ? '/api/login' : '/api/registro';
+
+        if (!email || !password || (!esModoLogin && !nombre)) {
+            alert("Por favor, llena todos los campos");
+            return;
+        }
+
+        try {
+            const respuesta = await fetch(ruta, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre, email, password })
+            });
+
+            const datos = await respuesta.json();
+
+            if (respuesta.ok) {
+                if (esModoLogin) {
+                    alert("¡Bienvenida!");
+                    localStorage.setItem('token', datos.token);
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert("Registro exitoso. Ahora puedes entrar.");
+                    cambiarModo();
+                }
+            } else {
+                alert("Error: " + (datos.error || "Datos incorrectos"));
+            }
+        } catch (error) {
+            alert("Error de conexión con el servidor");
+        }
+    }
+</script>
+</body>
+</html>
