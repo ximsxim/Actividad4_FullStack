@@ -24,7 +24,7 @@ describe('Pruebas MtyCoffeeGuide', () => {
     });
 
     // PRUEBA INTENCIONALMENTE ERRÓNEA
-    test('PRUEBA FALLIDA: Intenta crear cafetería sin nombre esperando éxito (200)', async () => {
+    test('PRUEBA FALLIDA: Intenta crear cafetería sin nombre esperando éxito  (200)', async () => {
         const tokenAdmin = jwt.sign({ id: 1, rol: 'admin' }, process.env.JWT_SECRET || 'secreto', { expiresIn: '1h' });
         
         const res = await request(app)
